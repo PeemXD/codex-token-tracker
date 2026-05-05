@@ -1,0 +1,79 @@
+{
+  "currency": "USD",
+  "unit": "1M tokens",
+  "longContextThresholdTokens": 270000,
+  "modes": ["standard", "batch", "flex", "priority"],
+  "models": {
+    "gpt-5.5": {
+      "match": ["gpt-5.5"],
+      "rates": {
+        "standard": {
+          "short": { "input": 5, "cachedInput": 0.5, "output": 30 },
+          "long": { "input": 10, "cachedInput": 1, "output": 45 }
+        },
+        "batch": {
+          "short": { "input": 2.5, "cachedInput": 0.25, "output": 15 },
+          "long": { "input": 5, "cachedInput": 0.5, "output": 22.5 }
+        },
+        "flex": {
+          "short": { "input": 2.5, "cachedInput": 0.25, "output": 15 },
+          "long": { "input": 5, "cachedInput": 0.5, "output": 22.5 }
+        },
+        "priority": {
+          "short": { "input": 12.5, "cachedInput": 1.25, "output": 75 }
+        }
+      }
+    },
+    "gpt-5.4": {
+      "match": ["gpt-5.4"],
+      "rates": {
+        "standard": {
+          "short": { "input": 2.5, "cachedInput": 0.25, "output": 15 },
+          "long": { "input": 5, "cachedInput": 0.5, "output": 22.5 }
+        },
+        "batch": {
+          "short": { "input": 1.25, "cachedInput": 0.13, "output": 7.5 },
+          "long": { "input": 2.5, "cachedInput": 0.25, "output": 11.25 }
+        },
+        "flex": {
+          "short": { "input": 1.25, "cachedInput": 0.13, "output": 7.5 },
+          "long": { "input": 2.5, "cachedInput": 0.25, "output": 11.25 }
+        },
+        "priority": {
+          "short": { "input": 5, "cachedInput": 0.5, "output": 30 }
+        }
+      }
+    },
+    "gpt-5.4-mini": {
+      "match": ["gpt-5.4-mini"],
+      "rates": {
+        "standard": {
+          "short": { "input": 0.75, "cachedInput": 0.075, "output": 4.5 }
+        },
+        "batch": {
+          "short": { "input": 0.375, "cachedInput": 0.0375, "output": 2.25 }
+        },
+        "flex": {
+          "short": { "input": 0.375, "cachedInput": 0.0375, "output": 2.25 }
+        },
+        "priority": {
+          "short": { "input": 1.5, "cachedInput": 0.15, "output": 9 }
+        }
+      }
+    },
+    "gpt-5.4-nano": {
+      "match": ["gpt-5.4-nano"],
+      "rates": {
+        "standard": {
+          "short": { "input": 0.2, "cachedInput": 0.02, "output": 1.25 }
+        },
+        "batch": {
+          "short": { "input": 0.1, "cachedInput": 0.01, "output": 0.625 }
+        },
+        "flex": {
+          "short": { "input": 0.1, "cachedInput": 0.01, "output": 0.625 }
+        }
+      }
+    }
+  }
+}

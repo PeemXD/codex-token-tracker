@@ -1,0 +1,4 @@
+data/*.jsonl
+data/summary.json
+node_modules/
+.DS_Store

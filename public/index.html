@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Codex Token Tracker</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local OTLP receiver</p>
+          <h1>Codex Token Tracker</h1>
+        </div>
+        <div class="actions">
+          <label class="select-control">
+            <span>Pricing</span>
+            <select id="pricingMode">
+              <option value="standard">Standard</option>
+              <option value="batch">Batch</option>
+              <option value="flex">Flex</option>
+              <option value="priority">Priority</option>
+            </select>
+          </label>
+          <span id="connection" class="status">Connecting</span>
+          <button id="reset" type="button">Reset data</button>
+        </div>
+      </header>
+
+      <section class="metric-grid" aria-label="Token totals">
+        <article class="metric">
+          <span>Total tokens</span>
+          <strong id="totalTokens">0</strong>
+        </article>
+        <article class="metric">
+          <span>Input</span>
+          <strong id="inputTokens">0</strong>
+        </article>
+        <article class="metric">
+          <span>Cached input</span>
+          <strong id="cachedTokens">0</strong>
+        </article>
+        <article class="metric">
+          <span>Output</span>
+          <strong id="outputTokens">0</strong>
+        </article>
+        <article class="metric">
+          <span>Reasoning</span>
+          <strong id="reasoningTokens">0</strong>
+        </article>
+        <article class="metric">
+          <span>Estimated cost</span>
+          <strong id="totalCost">$0.00</strong>
+          <small id="costMeta">Standard short/long</small>
+        </article>
+      </section>
+
+      <section class="split">
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Grouped by model</p>
+              <h2>Model usage</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Cost</th>
+                  <th>Total</th>
+                  <th>Input</th>
+                  <th>Cached</th>
+                  <th>Output</th>
+                  <th>Events</th>
+                </tr>
+              </thead>
+              <tbody id="modelRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Grouped by conversation</p>
+              <h2>Conversation usage</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Conversation</th>
+                  <th>Total</th>
+                  <th>Input</th>
+                  <th>Output</th>
+                  <th>Events</th>
+                </tr>
+              </thead>
+              <tbody id="conversationRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Latest prompts with token usage</p>
+            <h2>Recent prompts</h2>
+          </div>
+          <div class="inline-stats">
+            <span id="acceptedCount">0 accepted</span>
+            <span id="rawCount">0 raw</span>
+          </div>
+        </div>
+        <div id="events" class="events"></div>
+      </section>
+    </main>
+
+    <script src="/assets/app.js" type="module"></script>
+  </body>
+</html>
