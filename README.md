@@ -9,38 +9,61 @@ This app does not inspect HTTPS traffic and does not proxy OpenAI requests. It l
 - Node.js 20 or newer
 - Codex configured to export OTLP logs as JSON
 
-## Quick Start
+## Quick Start (CLI)
 
-The project is structured into a `backend` and `frontend` folder for clean separation. You can manage everything from the root directory using **npm** or **make**.
+The easiest way to use the tracker is by installing it as a global command-line tool. This gives you access to the `ctt` command from anywhere on your machine.
 
-### 1. Install
-
-```bash
-make install
-# OR: npm install
-```
-
-### 2. Development & Start
-
-Start the backend server (which will serve the static `frontend` files automatically):
+### 1. Clone & Install Globally
 
 ```bash
-make dev
-# OR: npm run dev
+git clone https://github.com/PeemXD/codex-token-tracker.git
+cd codex-token-tracker
+npm install -g .
 ```
 
-For production mode (without auto-reload):
+*(Note: The global installation automatically handles dependencies and registers the `ctt` command).*
+
+### 2. Start the Tracker
+
+You can now start the tracker in the background from any terminal window:
 
 ```bash
-make start
-# OR: npm start
+ctt start
 ```
 
-Open the dashboard:
+### 3. Open the Dashboard
 
-```text
-http://127.0.0.1:4318
+To view your token usage, open the web UI:
+
+```bash
+ctt ui
 ```
+
+### CLI Commands
+
+- `ctt start` - Launch the tracker in the background
+- `ctt start --log` - Run in the foreground with visible logs
+- `ctt stop` - Shut down the background process
+- `ctt restart` - Restart the background process
+- `ctt status` - Check if the tracker is running
+- `ctt ui` - Open the dashboard (`http://127.0.0.1:4318`)
+
+> **Data Storage:** The global `ctt` command stores your token history in `~/.codex-token-tracker/`. This means your data persists perfectly even if you run the command from different directories.
+
+---
+
+## Development Setup
+
+If you want to modify the code (the project is separated cleanly into `backend/` and `frontend/` folders):
+
+1. Install local dependencies:
+   ```bash
+   make install
+   ```
+2. Run the development server (auto-reloads on changes):
+   ```bash
+   make dev
+   ```
 
 ## OTLP Endpoints
 

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Local OTLP receiver and dashboard for tracking Codex token usage.",
   "type": "module",
+  "bin": {
+    "ctt": "./bin/ctt.js"
+  },
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
