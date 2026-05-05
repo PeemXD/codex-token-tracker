@@ -80,8 +80,11 @@ Debug endpoints:
 
 ```text
 http://127.0.0.1:4318/api/summary
+http://127.0.0.1:4318/api/summary?range=24h
 http://127.0.0.1:4318/api/raw
 ```
+
+`/api/summary` accepts `range=1h`, `range=24h`, `range=7d`, or `range=30d` to return filtered totals. You can also pass ISO timestamps with `since` and `until`.
 
 `/api/raw` shows the latest raw OTLP record samples. It is useful when Codex is sending telemetry but no token usage is detected. Keep it local; raw telemetry can include tool arguments or command output. User email and account id are redacted in this debug response.
 

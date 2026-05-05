@@ -10,6 +10,7 @@ export function createStore({ dataDir }) {
   const summaryFile = path.join(dataDir, "summary.json");
   const seen = new Set();
   const seenPrompts = new Set();
+  const history = [];
 
   const state = {
     startedAt: new Date().toISOString(),
@@ -68,13 +69,14 @@ export function createStore({ dataDir }) {
     }
 
     seen.add(event.id);
+    history.push({ type: "usage", event });
     state.acceptedEventCount += 1;
     state.lastEventAt = event.timestamp ?? event.receivedAt ?? new Date().toISOString();
     addUsage(state.totals, event.usage);
     addCostForEvent(state.cost, event);
     addBucket(state.byModel, event.model, event.usage, event);
     addBucket(state.byConversation, event.conversationId, event.usage);
-    addUsageToRecentPrompt(event);
+    addUsageToRecentPrompt(state, event);
 
     if (options.persist !== false) {
       fs.appendFileSync(eventsFile, `${JSON.stringify(event)}\n`);
@@ -90,25 +92,8 @@ export function createStore({ dataDir }) {
     }
 
     seenPrompts.add(promptEvent.id);
-
-    const conversationId = promptEvent.conversationId || "unknown";
-    const row = {
-      id: promptEvent.id,
-      timestamp: promptEvent.timestamp,
-      receivedAt: promptEvent.receivedAt,
-      conversationId,
-      prompt: promptEvent.prompt || fallbackPromptName(promptEvent.timestamp),
-      model: "pending",
-      eventName: promptEvent.eventName,
-      usage: emptyUsage(),
-      completed: false,
-      source: promptEvent.source
-    };
-
-    state.lastEventAt = promptEvent.timestamp ?? promptEvent.receivedAt ?? state.lastEventAt;
-    state.activePrompts[conversationId] = row;
-    state.recent.unshift(row);
-    state.recent = dedupeRecent(state.recent).slice(0, 100);
+    history.push({ type: "prompt", event: promptEvent });
+    addPromptToState(state, promptEvent);
 
     if (options.persist !== false) {
       fs.appendFileSync(eventsFile, `${JSON.stringify({ type: "prompt", ...promptEvent })}\n`);
@@ -118,37 +103,17 @@ export function createStore({ dataDir }) {
     return true;
   }
 
-  function addUsageToRecentPrompt(event) {
-    const conversationId = event.conversationId || "unknown";
-    const prompt = state.activePrompts[conversationId];
-    if (!prompt) {
-      return;
+  function snapshot({ includeRaw = false, since, until } = {}) {
+    const bounds = normalizeTimeBounds({ since, until });
+    const source = bounds ? buildFilteredState(history, bounds, state) : state;
+    const base = publicSnapshot(source, includeRaw);
+
+    if (bounds) {
+      base.timeFilter = {
+        since: bounds.sinceMs == null ? null : new Date(bounds.sinceMs).toISOString(),
+        until: bounds.untilMs == null ? null : new Date(bounds.untilMs).toISOString()
+      };
     }
-
-    prompt.lastUsageAt = event.timestamp ?? prompt.lastUsageAt;
-    prompt.receivedAt = event.receivedAt ?? prompt.receivedAt;
-    prompt.model = event.model;
-    prompt.eventName = event.eventName;
-    prompt.completed = true;
-    addUsage(prompt.usage, event.usage);
-
-    delete prompt.raw;
-    state.activePrompts[conversationId] = prompt;
-    state.recent = [prompt, ...state.recent.filter(row => row.id !== prompt.id)].slice(0, 100);
-  }
-
-  function snapshot({ includeRaw = false } = {}) {
-    const base = {
-      ...state,
-      byModel: sortBuckets(state.byModel),
-      byConversation: sortBuckets(state.byConversation),
-      recent: includeRaw ? state.recent : state.recent.map(stripRaw)
-    };
-
-    if (!includeRaw) {
-      delete base.rawSamples;
-    }
-    delete base.activePrompts;
 
     return base;
   }
@@ -173,6 +138,7 @@ export function createStore({ dataDir }) {
     state.rawMetricCount = 0;
     state.acceptedEventCount = 0;
     state.duplicateEventCount = 0;
+    history.length = 0;
     seenPrompts.clear();
 
     fs.writeFileSync(eventsFile, "");
@@ -208,6 +174,139 @@ function loadExistingEvents(eventsFile, onEvent) {
       // Ignore corrupted historical lines but keep the file for manual inspection.
     }
   }
+}
+
+function buildFilteredState(history, bounds, sourceState) {
+  const filtered = {
+    startedAt: bounds.sinceMs == null ? sourceState.startedAt : new Date(bounds.sinceMs).toISOString(),
+    lastEventAt: null,
+    totals: emptyUsage(),
+    cost: emptyCost(),
+    byModel: {},
+    byConversation: {},
+    recent: [],
+    activePrompts: {},
+    rawSamples: sourceState.rawSamples,
+    rawLogCount: sourceState.rawLogCount,
+    rawTraceCount: sourceState.rawTraceCount,
+    rawMetricCount: sourceState.rawMetricCount,
+    acceptedEventCount: 0,
+    duplicateEventCount: sourceState.duplicateEventCount
+  };
+
+  for (const record of history) {
+    if (!isWithinTimeBounds(record.event, bounds)) {
+      continue;
+    }
+
+    if (record.type === "prompt") {
+      addPromptToState(filtered, record.event);
+      continue;
+    }
+
+    filtered.acceptedEventCount += 1;
+    filtered.lastEventAt = record.event.timestamp ?? record.event.receivedAt ?? filtered.lastEventAt;
+    addUsage(filtered.totals, record.event.usage);
+    addCostForEvent(filtered.cost, record.event);
+    addBucket(filtered.byModel, record.event.model, record.event.usage, record.event);
+    addBucket(filtered.byConversation, record.event.conversationId, record.event.usage);
+    addUsageToRecentPrompt(filtered, record.event);
+  }
+
+  return filtered;
+}
+
+function addPromptToState(targetState, promptEvent) {
+  const conversationId = promptEvent.conversationId || "unknown";
+  const row = {
+    id: promptEvent.id,
+    timestamp: promptEvent.timestamp,
+    receivedAt: promptEvent.receivedAt,
+    conversationId,
+    prompt: promptEvent.prompt || fallbackPromptName(promptEvent.timestamp),
+    model: "pending",
+    eventName: promptEvent.eventName,
+    usage: emptyUsage(),
+    completed: false,
+    source: promptEvent.source
+  };
+
+  targetState.lastEventAt = promptEvent.timestamp ?? promptEvent.receivedAt ?? targetState.lastEventAt;
+  targetState.activePrompts[conversationId] = row;
+  targetState.recent.unshift(row);
+  targetState.recent = dedupeRecent(targetState.recent).slice(0, 100);
+}
+
+function addUsageToRecentPrompt(targetState, event) {
+  const conversationId = event.conversationId || "unknown";
+  const prompt = targetState.activePrompts[conversationId];
+  if (!prompt) {
+    return;
+  }
+
+  prompt.lastUsageAt = event.timestamp ?? prompt.lastUsageAt;
+  prompt.receivedAt = event.receivedAt ?? prompt.receivedAt;
+  prompt.model = event.model;
+  prompt.eventName = event.eventName;
+  prompt.completed = true;
+  addUsage(prompt.usage, event.usage);
+
+  delete prompt.raw;
+  targetState.activePrompts[conversationId] = prompt;
+  targetState.recent = [prompt, ...targetState.recent.filter(row => row.id !== prompt.id)].slice(0, 100);
+}
+
+function publicSnapshot(sourceState, includeRaw) {
+  const base = {
+    ...sourceState,
+    byModel: sortBuckets(sourceState.byModel),
+    byConversation: sortBuckets(sourceState.byConversation),
+    recent: includeRaw ? sourceState.recent : sourceState.recent.map(stripRaw)
+  };
+
+  if (!includeRaw) {
+    delete base.rawSamples;
+  }
+  delete base.activePrompts;
+
+  return base;
+}
+
+function normalizeTimeBounds({ since, until } = {}) {
+  const sinceMs = toTimeMs(since);
+  const untilMs = toTimeMs(until);
+
+  if (sinceMs == null && untilMs == null) {
+    return null;
+  }
+
+  return { sinceMs, untilMs };
+}
+
+function isWithinTimeBounds(event, bounds) {
+  const timestampMs = toTimeMs(event?.timestamp ?? event?.receivedAt);
+  if (timestampMs == null) {
+    return false;
+  }
+
+  if (bounds.sinceMs != null && timestampMs < bounds.sinceMs) {
+    return false;
+  }
+
+  if (bounds.untilMs != null && timestampMs > bounds.untilMs) {
+    return false;
+  }
+
+  return true;
+}
+
+function toTimeMs(value) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function addBucket(buckets, name, usage, event) {

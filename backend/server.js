@@ -12,6 +12,12 @@ const PORT = Number(process.env.PORT ?? 4318);
 const HOST = process.env.HOST ?? "127.0.0.1";
 const DATA_DIR = process.env.DATA_DIR ?? path.join(ROOT_DIR, "data");
 const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES ?? 10 * 1024 * 1024);
+const SUMMARY_RANGES = {
+  "1h": 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000
+};
 
 const store = createStore({ dataDir: DATA_DIR });
 
@@ -28,7 +34,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/summary") {
-      return json(res, 200, store.snapshot());
+      return json(res, 200, store.snapshot(summaryOptions(url.searchParams)));
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
@@ -60,6 +66,26 @@ server.listen(PORT, HOST, () => {
   console.log(`OTLP logs endpoint: ${baseUrl}/v1/logs`);
   console.log(`Data directory: ${DATA_DIR}`);
 });
+
+function summaryOptions(searchParams, now = Date.now()) {
+  const options = {};
+  const range = searchParams.get("range");
+
+  if (range && range !== "all" && SUMMARY_RANGES[range]) {
+    options.since = new Date(now - SUMMARY_RANGES[range]).toISOString();
+  }
+
+  const since = searchParams.get("since");
+  const until = searchParams.get("until");
+  if (since) {
+    options.since = since;
+  }
+  if (until) {
+    options.until = until;
+  }
+
+  return options;
+}
 
 async function handleOtlp(req, res, pathname) {
   const receivedAt = new Date().toISOString();

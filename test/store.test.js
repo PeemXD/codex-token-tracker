@@ -74,6 +74,34 @@ test("model buckets include model-specific cost estimates", () => {
   }
 });
 
+test("snapshot can filter usage and prompt rows by time", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-token-tracker-"));
+  try {
+    const store = createStore({ dataDir: dir });
+    store.addPrompt(promptEvent("prompt-old", "conversation-1", "old prompt", "2026-05-04T03:00:00.000Z"));
+    store.addEvent(usageEvent("usage-old", "conversation-1", 100, 20, "2026-05-04T03:00:01.000Z"));
+    store.addPrompt(promptEvent("prompt-new", "conversation-1", "new prompt", "2026-05-05T03:00:00.000Z"));
+    store.addEvent(usageEvent("usage-new", "conversation-1", 10, 5, "2026-05-05T03:00:01.000Z"));
+
+    const allTime = store.snapshot();
+    assert.equal(allTime.totals.total, 135);
+    assert.equal(allTime.recent.length, 2);
+
+    const filtered = store.snapshot({ since: "2026-05-05T00:00:00.000Z" });
+    assert.equal(filtered.totals.input, 10);
+    assert.equal(filtered.totals.output, 5);
+    assert.equal(filtered.totals.total, 15);
+    assert.equal(filtered.acceptedEventCount, 1);
+    assert.equal(filtered.byModel.length, 1);
+    assert.equal(filtered.byModel[0].events, 1);
+    assert.equal(filtered.recent.length, 1);
+    assert.equal(filtered.recent[0].prompt, "new prompt");
+    assert.equal(filtered.recent[0].usage.total, 15);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("new models without pricing are visible as unpriced", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-token-tracker-"));
   try {
@@ -92,11 +120,11 @@ test("new models without pricing are visible as unpriced", () => {
   }
 });
 
-function promptEvent(id, conversationId, prompt) {
+function promptEvent(id, conversationId, prompt, timestamp = "2026-05-05T03:00:00.000Z") {
   return {
     id,
-    timestamp: "2026-05-05T03:00:00.000Z",
-    receivedAt: "2026-05-05T03:00:00.100Z",
+    timestamp,
+    receivedAt: addMilliseconds(timestamp, 100),
     source: "logs",
     eventName: "codex.user_prompt",
     conversationId,
@@ -104,11 +132,11 @@ function promptEvent(id, conversationId, prompt) {
   };
 }
 
-function usageEvent(id, conversationId, input, output) {
+function usageEvent(id, conversationId, input, output, timestamp = "2026-05-05T03:00:01.000Z") {
   return {
     id,
-    timestamp: "2026-05-05T03:00:01.000Z",
-    receivedAt: "2026-05-05T03:00:01.100Z",
+    timestamp,
+    receivedAt: addMilliseconds(timestamp, 100),
     source: "logs",
     eventName: "codex.sse_event",
     model: "gpt-5.5",
@@ -121,4 +149,8 @@ function usageEvent(id, conversationId, input, output) {
       total: input + output
     }
   };
+}
+
+function addMilliseconds(timestamp, milliseconds) {
+  return new Date(Date.parse(timestamp) + milliseconds).toISOString();
 }

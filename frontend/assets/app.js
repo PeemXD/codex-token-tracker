@@ -12,14 +12,27 @@ const els = {
   events: document.querySelector("#events"),
   acceptedCount: document.querySelector("#acceptedCount"),
   rawCount: document.querySelector("#rawCount"),
+  timeRange: document.querySelector("#timeRange"),
   reset: document.querySelector("#reset")
 };
 
 const nf = new Intl.NumberFormat();
+const TIME_RANGE_STORAGE_KEY = "ctt.timeRange";
+const TIME_RANGES = new Set(["all", "1h", "24h", "7d", "30d"]);
 const money = new Intl.NumberFormat(undefined, {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 2
+});
+
+const savedTimeRange = localStorage.getItem(TIME_RANGE_STORAGE_KEY);
+if (TIME_RANGES.has(savedTimeRange)) {
+  els.timeRange.value = savedTimeRange;
+}
+
+els.timeRange.addEventListener("change", async () => {
+  localStorage.setItem(TIME_RANGE_STORAGE_KEY, els.timeRange.value);
+  await refresh();
 });
 
 els.reset.addEventListener("click", async () => {
@@ -36,7 +49,7 @@ setInterval(refresh, 2000);
 
 async function refresh() {
   try {
-    const res = await fetch("/api/summary", { cache: "no-store" });
+    const res = await fetch(summaryUrl(), { cache: "no-store" });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -60,9 +73,17 @@ function render(data) {
   els.acceptedCount.textContent = `${format(data.acceptedEventCount)} accepted`;
   els.rawCount.textContent = `${format((data.rawLogCount ?? 0) + (data.rawTraceCount ?? 0) + (data.rawMetricCount ?? 0))} raw`;
 
-  renderRows(els.modelRows, data.byModel ?? [], ["name", "cost", "total", "input", "cachedInput", "output", "events"]);
-  renderRows(els.conversationRows, data.byConversation ?? [], ["name", "total", "input", "output", "events"]);
+  renderRows(els.modelRows, data.byModel ?? [], ["name", "cost", "total", "input", "cachedInput", "output", "events"], emptyUsageMessage());
+  renderRows(els.conversationRows, data.byConversation ?? [], ["name", "total", "input", "output", "events"], emptyUsageMessage());
   renderEvents(data.recent ?? []);
+}
+
+function summaryUrl() {
+  const url = new URL("/api/summary", window.location.origin);
+  if (els.timeRange.value !== "all") {
+    url.searchParams.set("range", els.timeRange.value);
+  }
+  return url;
 }
 
 function renderCost(cost) {
@@ -87,7 +108,7 @@ function renderCost(cost) {
   ].join("\n");
 }
 
-function renderRows(tbody, rows, fields) {
+function renderRows(tbody, rows, fields, emptyMessage = "No token events captured yet") {
   tbody.textContent = "";
 
   if (!rows.length) {
@@ -95,7 +116,7 @@ function renderRows(tbody, rows, fields) {
     const td = document.createElement("td");
     td.colSpan = fields.length;
     td.className = "empty";
-    td.textContent = "No token events captured yet";
+    td.textContent = emptyMessage;
     tr.append(td);
     tbody.append(tr);
     return;
@@ -133,7 +154,9 @@ function renderEvents(events) {
     const td = document.createElement("td");
     td.colSpan = 6;
     td.className = "empty";
-    td.textContent = "Waiting for the next Codex prompt with log_user_prompt=true";
+    td.textContent = els.timeRange.value === "all"
+      ? "Waiting for the next Codex prompt with log_user_prompt=true"
+      : "No prompts in this time range";
     tr.append(td);
     els.events.append(tr);
     return;
@@ -179,6 +202,12 @@ function pill(text) {
 
 function format(value) {
   return nf.format(Number(value ?? 0));
+}
+
+function emptyUsageMessage() {
+  return els.timeRange.value === "all"
+    ? "No token events captured yet"
+    : "No token events in this time range";
 }
 
 function formatTime(value) {
