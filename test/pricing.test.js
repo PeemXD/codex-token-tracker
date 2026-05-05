@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyCostModes, addCostForEvent, estimateEventCost } from "../src/pricing.js";
+import { addCostForEvent, emptyCost, estimateEventCost } from "../backend/pricing.js";
 
 test("estimates standard gpt-5.5 short-context cost without double-counting cached input", () => {
   const cost = estimateEventCost({
@@ -38,9 +38,9 @@ test("uses long-context rates when an event exceeds the threshold", () => {
   assert.ok(Math.abs(cost.totalUsd - 2.55) < 0.000001);
 });
 
-test("keeps independent totals for pricing modes", () => {
-  const costsByMode = emptyCostModes();
-  addCostForEvent(costsByMode, {
+test("accumulates standard cost totals", () => {
+  const cost = emptyCost();
+  addCostForEvent(cost, {
     model: "gpt-5.5",
     usage: {
       input: 10_000,
@@ -51,10 +51,8 @@ test("keeps independent totals for pricing modes", () => {
     }
   });
 
-  assert.equal(costsByMode.standard.totalUsd, 0.08);
-  assert.equal(costsByMode.batch.totalUsd, 0.04);
-  assert.equal(costsByMode.flex.totalUsd, 0.04);
-  assert.equal(costsByMode.priority.totalUsd, 0.2);
+  assert.equal(cost.totalUsd, 0.08);
+  assert.equal(cost.pricing, "standard");
 });
 
 test("matches dated model snapshots to their pricing family", () => {

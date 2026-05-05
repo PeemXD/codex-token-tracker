@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { emptyUsage } from "./otel.js";
-import { addCostForEvent, emptyCostModes } from "./pricing.js";
+import { addCostForEvent, emptyCost } from "./pricing.js";
 
 export function createStore({ dataDir }) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -15,7 +15,7 @@ export function createStore({ dataDir }) {
     startedAt: new Date().toISOString(),
     lastEventAt: null,
     totals: emptyUsage(),
-    costsByMode: emptyCostModes(),
+    cost: emptyCost(),
     byModel: {},
     byConversation: {},
     recent: [],
@@ -71,7 +71,7 @@ export function createStore({ dataDir }) {
     state.acceptedEventCount += 1;
     state.lastEventAt = event.timestamp ?? event.receivedAt ?? new Date().toISOString();
     addUsage(state.totals, event.usage);
-    addCostForEvent(state.costsByMode, event);
+    addCostForEvent(state.cost, event);
     addBucket(state.byModel, event.model, event.usage, event);
     addBucket(state.byConversation, event.conversationId, event.usage);
     addUsageToRecentPrompt(event);
@@ -162,7 +162,7 @@ export function createStore({ dataDir }) {
     state.startedAt = new Date().toISOString();
     state.lastEventAt = null;
     state.totals = emptyUsage();
-    state.costsByMode = emptyCostModes();
+    state.cost = emptyCost();
     state.byModel = {};
     state.byConversation = {};
     state.recent = [];
@@ -216,8 +216,8 @@ function addBucket(buckets, name, usage, event) {
   buckets[key].events += 1;
   addUsage(buckets[key], usage);
   if (event) {
-    buckets[key].costsByMode ??= emptyCostModes();
-    addCostForEvent(buckets[key].costsByMode, event);
+    buckets[key].cost ??= emptyCost();
+    addCostForEvent(buckets[key].cost, event);
   }
 }
 

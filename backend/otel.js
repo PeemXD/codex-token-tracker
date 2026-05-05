@@ -557,3 +557,138 @@ function numberFrom(value) {
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
+
+export function extractRawData(payload, pathname, receivedAt) {
+  if (pathname === "/v1/metrics") {
+    return {
+      type: "metrics",
+      count: countMetricPoints(payload),
+      samples: sampleMetricPoints(payload, receivedAt)
+    };
+  } else if (pathname === "/v1/traces") {
+    return {
+      type: "traces",
+      count: countSpanRecords(payload),
+      samples: sampleSpanRecords(payload, receivedAt)
+    };
+  } else {
+    return {
+      type: "logs",
+      count: countLogRecords(payload),
+      samples: sampleLogRecords(payload, receivedAt)
+    };
+  }
+}
+
+function countLogRecords(payload) {
+  let total = 0;
+  for (const resourceLog of asArray(payload?.resourceLogs)) {
+    for (const scopeLog of asArray(resourceLog.scopeLogs)) {
+      total += asArray(scopeLog.logRecords).length;
+    }
+  }
+  return total || 1;
+}
+
+function countMetricPoints(payload) {
+  let total = 0;
+  for (const resourceMetric of asArray(payload?.resourceMetrics)) {
+    for (const scopeMetric of asArray(resourceMetric.scopeMetrics)) {
+      for (const metric of asArray(scopeMetric.metrics)) {
+        total += asArray(metric.sum?.dataPoints).length;
+        total += asArray(metric.gauge?.dataPoints).length;
+        total += asArray(metric.histogram?.dataPoints).length;
+      }
+    }
+  }
+  return total || 1;
+}
+
+function countSpanRecords(payload) {
+  let total = 0;
+  for (const resourceSpan of asArray(payload?.resourceSpans)) {
+    for (const scopeSpan of asArray(resourceSpan.scopeSpans)) {
+      total += asArray(scopeSpan.spans).length;
+    }
+  }
+  return total || 1;
+}
+
+function sampleLogRecords(payload, receivedAt) {
+  const samples = [];
+  for (const resourceLog of asArray(payload?.resourceLogs)) {
+    for (const scopeLog of asArray(resourceLog.scopeLogs)) {
+      for (const logRecord of asArray(scopeLog.logRecords)) {
+        samples.push({
+          receivedAt,
+          source: "logs",
+          timeUnixNano: logRecord.timeUnixNano ?? logRecord.observedTimeUnixNano ?? null,
+          body: previewValue(logRecord.body),
+          attributes: previewAttributes(logRecord.attributes)
+        });
+      }
+    }
+  }
+  return samples.slice(0, 10);
+}
+
+function sampleSpanRecords(payload, receivedAt) {
+  const samples = [];
+  for (const resourceSpan of asArray(payload?.resourceSpans)) {
+    for (const scopeSpan of asArray(resourceSpan.scopeSpans)) {
+      for (const span of asArray(scopeSpan.spans)) {
+        samples.push({
+          receivedAt,
+          source: "traces",
+          name: span.name ?? null,
+          startTimeUnixNano: span.startTimeUnixNano ?? null,
+          attributes: previewAttributes(span.attributes)
+        });
+      }
+    }
+  }
+  return samples.slice(0, 10);
+}
+
+function sampleMetricPoints(payload, receivedAt) {
+  const samples = [];
+  for (const resourceMetric of asArray(payload?.resourceMetrics)) {
+    for (const scopeMetric of asArray(resourceMetric.scopeMetrics)) {
+      for (const metric of asArray(scopeMetric.metrics)) {
+        samples.push({
+          receivedAt,
+          source: "metrics",
+          name: metric.name ?? null,
+          description: metric.description ?? null,
+          unit: metric.unit ?? null
+        });
+      }
+    }
+  }
+  return samples.slice(0, 10);
+}
+
+function previewAttributes(attributes) {
+  return asArray(attributes).map(attr => ({
+    key: attr.key,
+    value: isSensitiveAttribute(attr.key) ? { stringValue: "[redacted]" } : previewValue(attr.value)
+  }));
+}
+
+function isSensitiveAttribute(key) {
+  return [
+    "user.email",
+    "user.account_id"
+  ].includes(key);
+}
+
+function previewValue(value) {
+  const json = JSON.stringify(value ?? null);
+  if (json.length <= 1200) {
+    return value ?? null;
+  }
+  return {
+    truncated: true,
+    preview: json.slice(0, 1200)
+  };
+}

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createStore } from "../src/store.js";
+import { createStore } from "../backend/store.js";
 
 test("recent prompts only shows actual prompts and aggregates usage until the next prompt", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-token-tracker-"));
@@ -67,8 +67,8 @@ test("model buckets include model-specific cost estimates", () => {
 
     const [model] = store.snapshot().byModel;
     assert.equal(model.name, "gpt-5.5");
-    assert.equal(model.costsByMode.standard.totalUsd, 0.008);
-    assert.equal(model.costsByMode.batch.totalUsd, 0.004);
+    assert.equal(model.cost.totalUsd, 0.008);
+    assert.equal(model.cost.pricing, "standard");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -85,8 +85,8 @@ test("new models without pricing are visible as unpriced", () => {
 
     const [model] = store.snapshot().byModel;
     assert.equal(model.name, "gpt-6");
-    assert.equal(model.costsByMode.standard.totalUsd, 0);
-    assert.equal(model.costsByMode.standard.unpricedEvents, 1);
+    assert.equal(model.cost.totalUsd, 0);
+    assert.equal(model.cost.unpricedEvents, 1);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

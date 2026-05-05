@@ -9,11 +9,31 @@ This app does not inspect HTTPS traffic and does not proxy OpenAI requests. It l
 - Node.js 20 or newer
 - Codex configured to export OTLP logs as JSON
 
-## Run
+## Quick Start
+
+The project is structured into a `backend` and `frontend` folder for clean separation. You can manage everything from the root directory using **npm** or **make**.
+
+### 1. Install
 
 ```bash
-cd /Users/ar677154/workspace/codex-token-tracker
-npm start
+make install
+# OR: npm install
+```
+
+### 2. Development & Start
+
+Start the backend server (which will serve the static `frontend` files automatically):
+
+```bash
+make dev
+# OR: npm run dev
+```
+
+For production mode (without auto-reload):
+
+```bash
+make start
+# OR: npm start
 ```
 
 Open the dashboard:
@@ -22,7 +42,9 @@ Open the dashboard:
 http://127.0.0.1:4318
 ```
 
-The receiver accepts:
+## OTLP Endpoints
+
+The receiver accepts telemetry at:
 
 ```text
 http://127.0.0.1:4318/v1/logs
@@ -42,7 +64,7 @@ http://127.0.0.1:4318/api/raw
 
 ## Cost Estimate
 
-The dashboard estimates USD cost from captured usage events. Cost is calculated per event using that event's `model`, then rolled up into the total card and the Model usage table. It supports Standard, Batch, Flex, and Priority pricing modes for the GPT-5.5 and GPT-5.4 model families.
+The dashboard estimates USD cost from captured usage events. Cost is calculated per event using that event's `model`, then rolled up into the total card and the Model usage table. The Codex app is treated as Standard pricing only.
 
 Formula:
 
@@ -53,18 +75,18 @@ cost = billable_input * input_rate
   + output * output_rate
 ```
 
-Reasoning tokens are already included in output tokens, so they are shown as a breakdown but are not added a second time. Events above 270,000 input or total tokens use long-context rates when that mode/model has a long-context price.
+Reasoning tokens are already included in output tokens, so they are shown as a breakdown but are not added a second time. Events above 270,000 input or total tokens use long-context rates when that model has a long-context price.
 
 Pricing lives in:
 
 ```text
-src/model-pricing.json
+backend/model-pricing.json
 ```
 
 When a new model appears:
 
-1. Check the official OpenAI pricing page for input, cached input, output, and long-context rates.
-2. Add a new entry under `models` in `src/model-pricing.json`.
+1. Check the official OpenAI pricing page for Standard input, cached input, output, and long-context rates.
+2. Add a new entry under `models` in `backend/model-pricing.json`.
 3. Put the stable model family in `match`, for example `"match": ["gpt-5.6"]`; dated snapshots like `gpt-5.6-2026-06-01` will match automatically.
 4. Restart the tracker and run `npm test`.
 

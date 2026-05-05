@@ -7,7 +7,6 @@ const els = {
   reasoningTokens: document.querySelector("#reasoningTokens"),
   totalCost: document.querySelector("#totalCost"),
   costMeta: document.querySelector("#costMeta"),
-  pricingMode: document.querySelector("#pricingMode"),
   modelRows: document.querySelector("#modelRows"),
   conversationRows: document.querySelector("#conversationRows"),
   events: document.querySelector("#events"),
@@ -21,16 +20,6 @@ const money = new Intl.NumberFormat(undefined, {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 2
-});
-
-const savedPricingMode = localStorage.getItem("pricingMode");
-if (savedPricingMode && [...els.pricingMode.options].some(option => option.value === savedPricingMode)) {
-  els.pricingMode.value = savedPricingMode;
-}
-
-els.pricingMode.addEventListener("change", () => {
-  localStorage.setItem("pricingMode", els.pricingMode.value);
-  refresh();
 });
 
 els.reset.addEventListener("click", async () => {
@@ -67,7 +56,7 @@ function render(data) {
   els.cachedTokens.textContent = format(totals.cachedInput);
   els.outputTokens.textContent = format(totals.output);
   els.reasoningTokens.textContent = format(totals.reasoning);
-  renderCost(data.costsByMode?.[els.pricingMode.value]);
+  renderCost(data.cost);
   els.acceptedCount.textContent = `${format(data.acceptedEventCount)} accepted`;
   els.rawCount.textContent = `${format((data.rawLogCount ?? 0) + (data.rawTraceCount ?? 0) + (data.rawMetricCount ?? 0))} raw`;
 
@@ -89,7 +78,7 @@ function renderCost(cost) {
     cost.contexts?.long ? `${format(cost.contexts.long)} long` : null
   ].filter(Boolean).join(" / ");
   const unpriced = cost.unpricedEvents ? ` · ${format(cost.unpricedEvents)} unpriced` : "";
-  els.costMeta.textContent = `${labelize(cost.mode)}${contexts ? ` · ${contexts}` : ""}${unpriced}`;
+  els.costMeta.textContent = `Standard${contexts ? ` · ${contexts}` : ""}${unpriced}`;
   els.totalCost.title = [
     `Input ${money.format(cost.inputUsd ?? 0)}`,
     `Cached ${money.format(cost.cachedInputUsd ?? 0)}`,
@@ -121,10 +110,10 @@ function renderRows(tbody, rows, fields) {
       if (field === "name") {
         td.textContent = String(value ?? "unknown");
       } else if (field === "cost") {
-        const cost = row.costsByMode?.[els.pricingMode.value];
+        const cost = row.cost;
         td.textContent = cost ? money.format(cost.totalUsd ?? 0) : "-";
         if (cost?.unpricedEvents) {
-          td.title = `${format(cost.unpricedEvents)} unpriced events for this mode/model`;
+          td.title = `${format(cost.unpricedEvents)} unpriced events for this model`;
         }
       } else {
         td.textContent = format(value);
@@ -140,27 +129,40 @@ function renderEvents(events) {
   els.events.textContent = "";
 
   if (!events.length) {
-    const div = document.createElement("div");
-    div.className = "empty";
-    div.textContent = "Waiting for the next Codex prompt with log_user_prompt=true";
-    els.events.append(div);
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 6;
+    td.className = "empty";
+    td.textContent = "Waiting for the next Codex prompt with log_user_prompt=true";
+    tr.append(td);
+    els.events.append(tr);
     return;
   }
 
   for (const event of events.slice(0, 40)) {
-    const div = document.createElement("div");
-    div.className = "event";
+    const tr = document.createElement("tr");
 
-    div.append(
-      cell("event-time", formatTime(event.timestamp)),
-      cell("event-name", event.prompt ?? `${event.model} - ${event.eventName}`),
-      pill(`total ${format(event.usage?.total)}`),
-      pill(`in ${format(event.usage?.input)}`),
-      pill(`cached ${format(event.usage?.cachedInput)}`),
-      pill(`out ${format(event.usage?.output)}`)
-    );
+    const timeTd = document.createElement("td");
+    timeTd.textContent = formatTime(event.timestamp);
 
-    els.events.append(div);
+    const nameTd = document.createElement("td");
+    nameTd.className = "event-name";
+    nameTd.textContent = event.prompt ?? `${event.model} - ${event.eventName}`;
+
+    const totalTd = document.createElement("td");
+    totalTd.textContent = format(event.usage?.total);
+
+    const inTd = document.createElement("td");
+    inTd.textContent = format(event.usage?.input);
+
+    const cachedTd = document.createElement("td");
+    cachedTd.textContent = format(event.usage?.cachedInput);
+
+    const outTd = document.createElement("td");
+    outTd.textContent = format(event.usage?.output);
+
+    tr.append(timeTd, nameTd, totalTd, inTd, cachedTd, outTd);
+    els.events.append(tr);
   }
 }
 
@@ -177,10 +179,6 @@ function pill(text) {
 
 function format(value) {
   return nf.format(Number(value ?? 0));
-}
-
-function labelize(value) {
-  return String(value ?? "").replace(/^\w/, char => char.toUpperCase());
 }
 
 function formatTime(value) {

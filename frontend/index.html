@@ -4,25 +4,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Codex Token Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/styles.css">
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Local OTLP receiver</p>
-          <h1>Codex Token Tracker</h1>
+        <div class="brand">
+          <div class="logo">CT</div>
+          <div>
+            <p class="eyebrow">Local OTLP receiver</p>
+            <h1>Codex Token Tracker</h1>
+          </div>
         </div>
         <div class="actions">
-          <label class="select-control">
-            <span>Pricing</span>
-            <select id="pricingMode">
-              <option value="standard">Standard</option>
-              <option value="batch">Batch</option>
-              <option value="flex">Flex</option>
-              <option value="priority">Priority</option>
-            </select>
-          </label>
           <span id="connection" class="status">Connecting</span>
           <button id="reset" type="button">Reset data</button>
         </div>
@@ -117,7 +114,21 @@
             <span id="rawCount">0 raw</span>
           </div>
         </div>
-        <div id="events" class="events"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Prompt / Event</th>
+                <th>Total</th>
+                <th>In</th>
+                <th>Cached</th>
+                <th>Out</th>
+              </tr>
+            </thead>
+            <tbody id="events"></tbody>
+          </table>
+        </div>
       </section>
     </main>
 

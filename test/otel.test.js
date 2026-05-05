@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extractPromptEvents, extractUsageEvents } from "../src/otel.js";
+import { extractPromptEvents, extractUsageEvents } from "../backend/otel.js";
 
 test("extracts usage from OTLP log attributes", () => {
   const payload = {

@@ -6,23 +6,32 @@ const MILLION = 1_000_000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PRICING_CATALOG = readPricingCatalog(path.join(__dirname, "model-pricing.json"));
 
-const PRICING_MODES = PRICING_CATALOG.modes;
-
-export function emptyCostModes() {
-  return Object.fromEntries(PRICING_MODES.map(mode => [mode, emptyCost(mode)]));
+export function emptyCost() {
+  return {
+    currency: PRICING_CATALOG.currency,
+    pricing: "standard",
+    totalUsd: 0,
+    inputUsd: 0,
+    cachedInputUsd: 0,
+    outputUsd: 0,
+    reasoningUsd: 0,
+    pricedEvents: 0,
+    unpricedEvents: 0,
+    unpricedTokens: 0,
+    unpricedModels: [],
+    contexts: { short: 0, long: 0 }
+  };
 }
 
-export function addCostForEvent(costsByMode, event) {
-  for (const mode of PRICING_MODES) {
-    addCost(costsByMode[mode], estimateEventCost(event, mode));
-  }
+export function addCostForEvent(cost, event) {
+  addCost(cost, estimateEventCost(event));
 }
 
-export function estimateEventCost(event, mode = "standard") {
+export function estimateEventCost(event) {
   const usage = event?.usage ?? {};
   const model = event?.model ?? "unknown";
   const context = inferContextTier(usage);
-  const rates = findRates(model, mode, context);
+  const rates = findRates(model, context);
   const billableInput = Math.max((usage.input ?? 0) - (usage.cachedInput ?? 0), 0);
   const cachedInput = Math.max(usage.cachedInput ?? 0, 0);
   const output = Math.max(usage.output ?? 0, 0);
@@ -30,7 +39,7 @@ export function estimateEventCost(event, mode = "standard") {
 
   if (!rates) {
     return {
-      ...emptyCost(mode),
+      ...emptyCost(),
       unpricedEvents: 1,
       unpricedModels: [model],
       unpricedTokens: usage.total ?? 0
@@ -43,7 +52,7 @@ export function estimateEventCost(event, mode = "standard") {
   const reasoningUsd = reasoning * rates.output / MILLION;
 
   return {
-    ...emptyCost(mode),
+    ...emptyCost(),
     inputUsd,
     cachedInputUsd,
     outputUsd,
@@ -61,23 +70,6 @@ export function estimateEventCost(event, mode = "standard") {
   };
 }
 
-function emptyCost(mode) {
-  return {
-    currency: PRICING_CATALOG.currency,
-    mode,
-    totalUsd: 0,
-    inputUsd: 0,
-    cachedInputUsd: 0,
-    outputUsd: 0,
-    reasoningUsd: 0,
-    pricedEvents: 0,
-    unpricedEvents: 0,
-    unpricedTokens: 0,
-    unpricedModels: [],
-    contexts: { short: 0, long: 0 }
-  };
-}
-
 function addCost(target, cost) {
   target.totalUsd += cost.totalUsd;
   target.inputUsd += cost.inputUsd;
@@ -92,9 +84,9 @@ function addCost(target, cost) {
   target.unpricedModels = [...new Set([...target.unpricedModels, ...cost.unpricedModels])];
 }
 
-function findRates(model, mode, context) {
+function findRates(model, context) {
   const modelMatch = normalizeModel(model);
-  return modelMatch?.rates?.[mode]?.[context] ?? null;
+  return modelMatch?.rates?.[context] ?? null;
 }
 
 function normalizeModel(model) {

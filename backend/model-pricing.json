@@ -1,0 +1,33 @@
+{
+  "currency": "USD",
+  "unit": "1M tokens",
+  "longContextThresholdTokens": 270000,
+  "models": {
+    "gpt-5.5": {
+      "match": ["gpt-5.5"],
+      "rates": {
+        "short": { "input": 5, "cachedInput": 0.5, "output": 30 },
+        "long": { "input": 10, "cachedInput": 1, "output": 45 }
+      }
+    },
+    "gpt-5.4": {
+      "match": ["gpt-5.4"],
+      "rates": {
+        "short": { "input": 2.5, "cachedInput": 0.25, "output": 15 },
+        "long": { "input": 5, "cachedInput": 0.5, "output": 22.5 }
+      }
+    },
+    "gpt-5.4-mini": {
+      "match": ["gpt-5.4-mini"],
+      "rates": {
+        "short": { "input": 0.75, "cachedInput": 0.075, "output": 4.5 }
+      }
+    },
+    "gpt-5.4-nano": {
+      "match": ["gpt-5.4-nano"],
+      "rates": {
+        "short": { "input": 0.2, "cachedInput": 0.02, "output": 1.25 }
+      }
+    }
+  }
+}
