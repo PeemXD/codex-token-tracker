@@ -281,6 +281,26 @@ table {
   min-width: 640px;
 }
 
+.recent-table {
+  table-layout: fixed;
+  min-width: 840px;
+}
+
+.recent-table th:nth-child(1),
+.recent-table td:nth-child(1) {
+  width: 150px;
+}
+
+.recent-table th:nth-child(2),
+.recent-table td:nth-child(2) {
+  width: auto;
+}
+
+.recent-table th:nth-child(n+3),
+.recent-table td:nth-child(n+3) {
+  width: 110px;
+}
+
 th,
 td {
   border-bottom: 1px solid var(--line);
@@ -351,11 +371,56 @@ td:first-child {
 }
 
 .event-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 500;
   color: var(--text-strong);
+}
+
+.event-toggle {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-strong);
+  display: block;
+  font: inherit;
+  line-height: 1.5;
+  min-height: 0;
+  overflow: hidden;
+  padding: 2px 24px 2px 0;
+  position: relative;
+  text-align: left;
+  text-overflow: ellipsis;
+  transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.event-toggle::after {
+  content: "v";
+  color: var(--muted);
+  position: absolute;
+  right: 4px;
+  top: 2px;
+}
+
+.event-toggle:hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+
+.event-name.expanded .event-toggle {
+  overflow: visible;
+  padding-right: 0;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.event-name.expanded .event-toggle::after {
+  content: "^";
+  display: inline-block;
+  margin-left: 8px;
+  position: static;
 }
 
 .token-pill {

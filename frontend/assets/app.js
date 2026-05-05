@@ -19,6 +19,7 @@ const els = {
 const nf = new Intl.NumberFormat();
 const TIME_RANGE_STORAGE_KEY = "ctt.timeRange";
 const TIME_RANGES = new Set(["all", "1h", "24h", "7d", "30d"]);
+const expandedEventIds = new Set();
 const money = new Intl.NumberFormat(undefined, {
   style: "currency",
   currency: "USD",
@@ -169,8 +170,9 @@ function renderEvents(events) {
     timeTd.textContent = formatTime(event.timestamp);
 
     const nameTd = document.createElement("td");
-    nameTd.className = "event-name";
-    nameTd.textContent = event.prompt ?? `${event.model} - ${event.eventName}`;
+    const eventId = event.id ?? `${event.timestamp ?? ""}-${event.conversationId ?? ""}`;
+    nameTd.className = expandedEventIds.has(eventId) ? "event-name expanded" : "event-name";
+    nameTd.append(eventNameButton(event.prompt ?? `${event.model} - ${event.eventName}`, nameTd, eventId));
 
     const totalTd = document.createElement("td");
     totalTd.textContent = format(event.usage?.total);
@@ -208,6 +210,25 @@ function emptyUsageMessage() {
   return els.timeRange.value === "all"
     ? "No token events captured yet"
     : "No token events in this time range";
+}
+
+function eventNameButton(text, cell, eventId) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "event-toggle";
+  button.textContent = text;
+  button.title = text;
+  button.setAttribute("aria-expanded", String(expandedEventIds.has(eventId)));
+  button.addEventListener("click", () => {
+    const expanded = cell.classList.toggle("expanded");
+    if (expanded) {
+      expandedEventIds.add(eventId);
+    } else {
+      expandedEventIds.delete(eventId);
+    }
+    button.setAttribute("aria-expanded", String(expanded));
+  });
+  return button;
 }
 
 function formatTime(value) {
